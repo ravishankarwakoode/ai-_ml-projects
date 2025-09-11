@@ -1,1 +1,70 @@
 # ai-_ml-projects
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, LSTM, Dropout
+ florida=pd.read_csv('/content/drive/MyDrive/Dataset/florida_file (1).csv')
+ florida['Data']=pd.to_datetime(florida['Date'])
+florida.head()
+florida=florida[['Date','Avg_Temp']]
+florida=florida.fillna(florida.bfill())
+florida.columns=['Date','avg_temp']
+florida.info()
+train=florida[:-225]
+test=florida[-225:]
+train_dates=pd.to_datetime(train['Date'])
+test_dates=pd.to_datetime(test['Date'])
+Scalar=MinMaxScaler(feature_range=(0,1))
+Scalar_data=Scalar.fit_transform(train['avg_temp'].values.reshape(-1,1))
+prediction_days=225
+x_train,y_train=[],[]
+for x in  range(prediction_days,len(Scalar_data)):
+  x_train.append(Scalar_data[x-prediction_days:x,0])
+  y_train.append(Scalar_data[x,0])
+x_train,y_train=np.array(x_train),np.array(y_train)
+x_train=np.reshape(x_train,(x_train.shape[0],x_train.shape[1],1))
+#build thhe model
+Model=Sequential()
+Model.add(LSTM(128,activation='relu',return_sequences=True,input_shape=(x_train.shape[1],1)))
+Model.add(Dropout(0.2))
+Model.add(LSTM(units=50,activation='relu',return_sequences=True))
+Model.add(Dropout(0.2))
+Model.add(LSTM(units=178,activation='relu',return_sequences=False))
+Model.add(Dropout(0.2))
+Model.add(Dense(units=1))
+Model.compile(optimizer='nadam',loss='mse')
+Model.summary()
+history=Model.fit(x_train,y_train,epochs=25,batch_size=32,validation_split=0.1)
+plt.plot(history.history['loss'], label='Training loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.title('Training Loss over Epochs')
+plt.plot(history.history['val_loss'],label='validation_loss')
+plt.legend()
+plt.show()
+total_temp=pd.concat((train['avg_temp'],test['avg_temp']), axis=0)
+#Extract value needed for texting
+Model_inputs=total_temp[len(total_temp)-len(test)-prediction_days:].values
+Model_inputs=Model_inputs.reshape(-1,1)
+Model_inputs=Scalar.transform(Model_inputs)
+
+
+x_test=[]
+for x in range(prediction_days,len(Model_inputs)):
+  x_test.append(Model_inputs[x-prediction_days:x,0])
+x_test=np.array(x_test)
+x_test=np.reshape(x_test,(x_test.shape[0],x_test.shape[1],1))
+pred=Model.predict(x_test)
+pred=Scalar.inverse_transform(pred)
+test['pred_temp']=pred
+test.head()
+plt.figure(figsize=(12,6))
+plt.plot(test['Date'],test['avg_temp'],color='blue',label='actual temp')
+plt.plot(test['Date'],test['pred_temp'],color='red',label='prediction temp')
+plt.title('Temperature prediction with LSTM')
+plt.xlabel('Date')
+plt.ylabel('Temperature')
+plt.legend()
+plt.show()
