@@ -1,0 +1,66 @@
+# Libraries
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import datetime as dt
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout, LSTM
+
+
+
+Sequence=[10,20,30,40,50,60,70,80]
+n_steps=3
+n_features=1
+
+#create Sequence
+x,y=[],[]
+for i in range(len(Sequence)-n_steps):
+  x.append(Sequence[i:i+n_steps])
+  y.append(Sequence[i+n_steps])
+x=np.array(x)
+y=np.array(y)
+
+x=x.reshape((x.shape[0],x.shape[1],n_features))
+
+print('After reshape',x.shape)
+
+Model=Sequential()
+Model.add(LSTM(100,activation='relu',input_shape=(n_steps,n_features)))
+
+Model.add(Dense(1))
+#fit the model
+Model.fit(x,y,epochs=500,verbose=1)
+
+Model.compile(optimizer='adam',loss='mse')
+
+y_pred = Model.predict(x,verbose=0)
+
+print('True value',y)
+print('prediction value',y_pred.flatten())
+
+
+
+plt.plot(y,label='True')
+plt.plot(y_pred,label='prediction')
+plt.legend()
+plt.show()
+
+
+
+x_input=np.array([60,70,80])
+x_input=x_input.reshape((1,n_steps,n_features))
+
+next_num=Model.predict(x_input,verbose=0)
+print('next_num_prediction',next_num)
+
+x_input=([70,80,90])
+future=[]
+
+for i in range(5):
+  x_input_reshape=np.array(x_input).reshape((1,n_steps,n_features))
+  yhat=Model.predict(x_input_reshape,verbose=0)
+  future.append(yhat[0][0])
+  x_input.append(yhat[0][0])
+  x_input=x_input[1:]
+  print('future prediction',future)
