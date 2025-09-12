@@ -1,0 +1,129 @@
+# import libraries
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+%matplotlib inline
+from tensorflow.keras import datasets,models,layers,optimizers
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.callbacks import ModelCheckpoint,EarlyStopping
+from google.colab.patches import cv2_imshow
+
+
+# Data load
+batch_size=32
+num_classes=10
+epochs=40
+num_predictions=20
+
+
+datasets.cifar10.load_data()
+
+
+# Train , Test
+(x_train,y_train),(x_test,y_test)=datasets.cifar10.load_data()
+
+x_train[0]
+y_train[0]
+
+# check the num of samples
+print('x_train.shape','x_train.shape')
+print(x_train.shape[0],'train sample')
+print(y_test.shape[0],'test sample')
+
+x_train[0:,:,:].shape
+
+# import data in dictionary 
+lebal_dict={0:'airoplane',1:'automobile',2:'bird',3:'cat',4:'deer',5:'dog',6:'frog',7:'horse',8:'ship',9:'truck'}
+
+#Explore the Data
+i=5574
+image=x_train[i]
+label=y_train[i][0] 
+print(f'Label ID:{label}\n name {lebal_dict[label]}') 
+
+
+y_train.shape
+y_test.shape
+
+
+from sklearn.preprocessing import LabelBinarizer
+enc=LabelBinarizer()
+
+
+y_train=enc.fit_transform(y_train)
+y_test=enc.fit_transform(y_test)
+print(y_train.shape)
+print(y_test.shape)
+
+batch_size=None
+
+
+Model=models.Sequential()
+Model.add(layers.Conv2D(32,(3,3),padding='same',activation='relu',input_shape=x_train.shape[1:]))
+Model.add(layers.BatchNormalization())
+Model.add(layers.MaxPooling2D((2,2)))
+Model.add(layers.Dropout(0.2))
+
+Model=models.Sequential()
+Model.add(layers.Conv2D(32,(3,3),padding='same',activation='relu',input_shape=x_train.shape[1:]))
+Model.add(layers.BatchNormalization())
+Model.add(layers.MaxPooling2D((2,2)))
+Model.add(layers.Dropout(0.2))
+
+
+Model.add(layers.Conv2D(64,(3,3),padding='same',activation='relu'))
+Model.add(layers.BatchNormalization())
+Model.add(layers.MaxPooling2D((2,2)))
+Model.add(layers.Dropout(0.5))
+
+
+
+Model.add(layers.Flatten())
+Model.add(layers.Dense(256,activation='relu'))
+Model.add(layers.Dropout(0.5))
+Model.add(layers.Dense(10,activation='softmax'))
+
+Model.summary()
+
+opt=optimizers.Adam(learning_rate=0.01,beta_1=0.9,beta_2=0.999,epsilon=1e-08)
+
+x_train=x_train.astype('float32')
+x_test=x_test.astype('float32')
+x_train=x_train/255
+x_test=x_test/255
+
+Model.compile(loss='categorical_crossentropy',optimizer=opt,metrics=['accuracy'])
+
+early_stoping=EarlyStopping(monitor='var_loss',min_delta=0.0001,patience=10)
+
+Model_checkpoint =ModelCheckpoint('cifar_cnn_checkpoint_{epoch:02d}_loss(val_loss:7f).weights.h5',
+                                  monitor='val_loss',
+                                  verbose=1,
+                                  save_best_only=True,
+                                  save_weights_only=True,
+                                  mode='auto')
+
+x_train=x_train.reshape(x_train.shape[0],32,32,3)
+x_test=x_test.reshape(x_test.shape[0],32,32,3)
+print(x_train.shape)
+print(x_test.shape)
+
+# Epochs input
+history=Model.fit(x_train,y_train,batch_size=batch_size,epochs=5,validation_data=(x_test,y_test), shuffle=True,callbacks=[EarlyStopping(), Model_checkpoint])
+
+# plot craete 
+plt.plot(history.history['loss'],label='train')
+plt.plot(history.history['val_loss'],label='test')
+plt.legend()
+plt.show()
+
+score=Model.evaluate(x_test,y_test,verbose=1)
+
+print('Test loss:',score[0])
+print('Test accuracy:',score[1])
+
+ # prediction and data frame 
+import pandas as pd
+prediction=Model.predict(x_test)
+pred=pd.DataFrame(prediction)
+pred.head()
